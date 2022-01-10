@@ -29,7 +29,7 @@ for f in *KOfamCountsReformatted.txt; do sed 's/ /;/' $f > ${f}KOfamCountsReform
  
 for f in *KOfamCountsReformattedTwo.txt; do awk -F ";" '{n=split($1,a,";");for (i=1;i<=n;i++) print $2"\t"a[i]}' $f > ${f}FinalCounts.tsv; done
 
-for gene_file in `ls *_KOfamCounts.tsv`; do
+for gene_file in `ls *KOfamCounts.tsv`; do
   cut -f1 ${gene_file} |uniq -c|>> all_genes.txt
 done
 
