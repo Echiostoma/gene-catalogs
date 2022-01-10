@@ -84,3 +84,5 @@ find . -name "*KOfamCounts.txt" -type f -delete
 find . -name "*KOfamEvalue_filtered.txt" -type f -delete
 find . -name "*Reformatted.txt" -type f -delete
 find . -name "*ReformattedTwo.txt" -type f -delete
+find . -name "*FinalCounts.tsv" -type f -delete
+
