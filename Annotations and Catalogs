@@ -1,69 +1,122 @@
+###The following script can be found at https://github.com/Echiostoma/gene-catalogs/blob/main/Annotations%20and%20Catalogs###
+###The following code takes all assembly files (.fa suffix) in a working directory, iteratively creates Anvi'o compatible contig databases, exports functions for each annotation source, estimates taxonomy, filters for the e-value of each annotation, and converts those data into a compatible format for creating gene inventories for all assemblies###
+###The list of all functions that are in Anvi'o can be viewed at https://merenlab.org/software/anvio/vignette/###
+
+###for all files (f) with the .fa suffix (*.fa) in the working directory, create an Anvi'o contig database (anvi-gen-contigs-database) using four threads (-T 4) with the input file (-f) ending in .fa -- paste ($f) each file name in the directory and name (-n) and export (-o) each contig database for downstream analyses###
 for f in *.fa; do anvi-gen-contigs-database -T 4 -f $f -n ${f} -o ${f}_out.db; done
-for f in *.db; do anvi-run-ncbi-cogs -c $f -T 4 --sensitive; done
+
+###for all files (f) with the .db suffix (*.db) in the working directory, annotate each contig database (-c) with the pasted contig database name ($f) with four threads (-T 4) using COG20 categories and functions (anvi-run-ncbi-cogs)###
+for f in *.db; do anvi-run-ncbi-cogs -c $f -T 4; done
+
+###for all files (f) with the .db suffix (*.db) in the working directory, annotate each contig database (-c) with the pasted contig database name ($f) with four threads (-T 4) using KOfam (anvi-run-kegg-kofams)###
 for f in *.db; do anvi-run-kegg-kofams -c $f -T 4; done
+
+###for all files (f) with the .db suffix (*.db) in the working directory, annotate each contig database (-c) with the pasted contig database name ($f) with four threads (-T 4) using KOfam (anvi-run-pfams)###
 for f in *.db; do anvi-run-pfams -c $f -T 4; done
+
+###for all files (f) with the .db suffix (*.db) in the working directory, export (anvi-export-functions) annotation sources (COG20_CATEGORY, COG20_FUNCTION, KOfam, Pfam) for each contig database (-c) with the pasted contig database name ($f) to a new .txt file (-o) with the pasted ($f) contig database name###
 for f in *.db; do anvi-export-functions -c $f -o ${f}_COG20Category.txt --annotation-sources COG20_CATEGORY; done
 for f in *.db; do anvi-export-functions -c $f -o ${f}_COG20Function.txt --annotation-sources COG20_FUNCTION; done
 for f in *.db; do anvi-export-functions -c $f -o ${f}_KOfam.txt --annotation-sources KOfam; done
 for f in *.db; do anvi-export-functions -c $f -o ${f}_Pfam.txt --annotation-sources Pfam; done
+
+###for all files (f) with the .db suffix (*.db) in the working directory, export prodigal (--gene-caller prodigal) designated gene calls (anvi-export-gene-calls) for each contig database (-c) to a new text file (-o) with the pasted contig database name###
 for f in *.db; do anvi-export-gene-calls -c $f --gene-caller prodigal -o ${f}_AllGeneCalls.txt; done
 
+###for all files (f) with the .db suffix (*.db) in the working directory, run hidden Markov models against curated profiles of single copy core genes and ribosomal RNAs (anv-run-hmms) for each contig database (-c) with pasted file name ($f) using four threads (-T 4)###
 for f in *.db; do anvi-run-hmms -c $f -T 4; done
+
+###for all files (f) with the .db suffix (*.db) in the working directory, search for single copy core genes (anvi-run-scg-taxonomy) against GTDB databases (included in Anvi'o installation) for each contig database (-c) with pasted file name ($f) using four threads (-T 4)###
 for f in *.db; do anvi-run-scg-taxonomy -c $f -T 4; done
 
+
+###for all files (f) with the COG20Function.txt suffix, run the awk command to filter column 5 ($5) to include genes with an e-value <= 0.0001 and export (>) to a new file named ${f}_COG20FunctionEvalue_filtered.txt###
 for f in *COG20Function.txt; do awk -F "\t" '{ if(($5 != 0) && ($5 <= .0001)) { print } }' $f >${f}_COG20FunctionEvalue_filtered.txt;done
+
+###for all files (f) with the KOfam.txt suffix, run the awk command to filter column 5 ($5) to include genes with an e-value <= 0.0001 and export (>) to a new file named ${f}_KOfamEvalue_filtered.txt###
 for f in *KOfam.txt; do awk -F "\t" '{ if(($5 != 0) && ($5 <= .0001)) { print } }' $f >${f}_KOfamEvalue_filtered.txt;done
+
+###for all files (f) with the Pfam.txt suffix, run the awk command to filter column 5 ($5) to include genes with an e-value <= 0.0001 and export (>) to a new file named ${f}_PfamEvalue_filtered.txt###
 for f in *Pfam.txt; do awk -F "\t" '{ if(($5 != 0) && ($5 <= .0001)) { print } }' $f >${f}_PfamEvalue_filtered.txt;done
 
-
+###for all files (f) with the *KOfamEvalue_filtered.txt suffix, cut all genes with e-values <=0.0001 from the previous step, sort them alphabetically (sort), retain only uniq values (uniq -c) while counting the number of appearances of each gene and export (>) to a new file named ${f}KOfamCounts.txt###
 for f in *KOfamEvalue_filtered.txt; do cut -f4 $f| sort | uniq -c > ${f}KOfamCounts.txt; done
+
+###for all files (f) with the *PfamEvalue_filtered.txt suffix, cut all genes with e-values <=0.0001 from the previous step, sort them alphabetically (sort), retain only uniq values (uniq -c) while counting the number of appearances of each gene and export (>) to a new file named ${f}PfamCounts.txt###
 for f in *PfamEvalue_filtered.txt; do cut -f4 $f| sort | uniq -c > ${f}PfamCounts.txt; done
+
+###for all files (f) with the *COG20FunctionEvalue_filtered.txt suffix, cut all genes with e-values <=0.0001 from the previous step, sort them alphabetically (sort), retain only uniq values (uniq -c) while counting the number of appearances of each gene and export (>) to a new file named ${f}COG20FunctionCounts.txt###
 for f in *COG20FunctionEvalue_filtered.txt; do cut -f4 $f| sort | uniq -c > ${f}COG20FunctionCounts.txt; done
 
+
+###for all files (f) with the suffix KOfamCounts.txt; run the sed command to remove white space introduced by awk and export (>) to a new file ${f}KOfamCountsReformatted.txt###
 for f in *KOfamCounts.txt; do sed 's/^ *//g' $f > ${f}KOfamCountsReformatted.txt;done
+
+###for all files (f) with the suffix KOfamCountsReformatted.txt; run the sed command to place a semicolon between gene name and counts for that gene and export (>) to a new file ${f}KOfamCountsReformattedTwo.txt###
 for f in *KOfamCountsReformatted.txt; do sed 's/ /;/' $f > ${f}KOfamCountsReformattedTwo.txt; done
+
+###for all files (f) with the suffix KOfamCountsReformattedTwo.txt, do awk to split columns one and two into two new cells at the semi colon by gene name ($1 column1) and gene counts ($2 column2) to a new file called ${f}KOfamFinalCounts.tsv###
 for f in *KOfamCountsReformattedTwo.txt; do awk -F ";" '{n=split($1,a,";");for (i=1;i<=n;i++) print $2"\t"a[i]}' $f > ${f}KOfamFinalCounts.tsv; done
 
-
+###for all files (f) with the suffix PfamCounts.txt; run the sed command to remove white space introduced by awk and export (>) to a new file ${f}PfamCountsReformatted.txt###
 for f in *PfamCounts.txt; do sed 's/^ *//g' $f > ${f}PfamCountsReformatted.txt;done
+
+###for all files (f) with the suffix PfamCountsReformatted.txt; run the sed command to place a semicolon between gene name and counts for that gene and export (>) to a new file ${f}PfamCountsReformattedTwo.txt###
 for f in *PfamCountsReformatted.txt; do sed 's/ /;/' $f > ${f}PfamCountsReformattedTwo.txt; done
+
+###for all files (f) with the suffix PfamCountsReformattedTwo.txt, do awk to split columns one and two into two new cells at the semi colon by gene name ($1 column1) and gene counts ($2 column2) to a new file called ${f}PfamFinalCounts.tsv###
 for f in *PfamCountsReformattedTwo.txt; do awk -F ";" '{n=split($1,a,";");for (i=1;i<=n;i++) print $2"\t"a[i]}' $f > ${f}PfamFinalCounts.tsv; done
 
+###for all files (f) with the suffix COG20FunctionCounts.txt; run the sed command to remove white space introduced by awk and export (>) to a new file ${f}COG20FunctionCountsReformatted.txt###
 for f in *COG20FunctionCounts.txt; do sed 's/^ *//g' $f > ${f}COG20FunctionCountsReformatted.txt;done
+
+###for all files (f) with the suffix COG20FunctionCountsReformatted.txt; run the sed command to place a semicolon between gene name and counts for that gene and export (>) to a new file ${f}COG20FunctionCountsReformattedTwo.txt###
 for f in *COG20FunctionCountsReformatted.txt; do sed 's/ /;/' $f > ${f}COG20FunctionCountsReformattedTwo.txt; done
+
+###for all files (f) with the suffix COG20FunctionCountsReformattedTwo.txt, do awk to split columns one and two into two new cells at the semi colon by gene name ($1 column1) and gene counts ($2 column2) to a new file called ${f}COG20FunctionFinalCounts.tsv###
 for f in *COG20FunctionCountsReformattedTwo.txt; do awk -F ";" '{n=split($1,a,";");for (i=1;i<=n;i++) print $2"\t"a[i]}' $f > ${f}COG20FunctionFinalCounts.tsv; done
 
 
-
+###list each gene file with suffix *KOfamFinalCounts.tsv and cut the gene names from column 1 of each file and export to new file called all_genes.txt
 for gene_file in `ls *KOfamFinalCounts.tsv`; do
   cut -f1 ${gene_file} >> all_genes.txt
 done
 
+
+###sort all of the genes alphabetically, and only retains unique occurences of each gene and export to new file called uniq_KOfam.txt###
 sort -u all_genes.txt > uniq_KOfam.txt
 
 
+###the next portion of this script is run a total of three times, once for each annotation source, so only this first occurrence is annotated for KOfams here###
+###set the environment we are working in###
 set -e
 
+
+###establish the variable called uniq_genes_file and define it as uniq_KOfam.txt###
 uniq_genes_file="uniq_KOfam.txt"
 
+
+###establish the variable output_file and define it as combined-outputKOfams.tsv###
 output_file="combined-outputKOfams.tsv"
 
-
+###append/create the beginning of the output file with column name added, which contains all unique gene names that we identified above in the first column###
 cat <( printf "function\n" ) ${uniq_genes_file} > ${output_file}
 
 
+###set to break only on a new line only###
 IFS=$'\n'
 
-
+###loop through all of our input files with the suffix KOfamFinalCounts.tsv###
 for curr_file in $(ls *KOfamFinalCounts.tsv); do
 
+###create a sample name without the filename extension###
 
 curr_sample_name=$(echo ${curr_file} | sed 's/.tsv//')
 
-
+###append the current sample name to a temporary file that we build over time###
 printf "${curr_sample_name}\n" > building-col.tmp
 
-
+###loop through unique gene names in the current sample file to append counts or '0' if that gene name is not matched exactly with the grep command below###
 for curr_gene in $(cat ${uniq_genes_file}); do
 
 
@@ -79,13 +132,14 @@ fi
 
 done
 
-
+###add to our output file that is being built over time and remove the current sample file until the last samile file is reached and processed###
 paste ${output_file} building-col.tmp > building-output.tmp
 mv building-output.tmp ${output_file}
 rm building-col.tmp
 
 done 
 
+###delete all files with the following suffixes###
 find . -name "*KOfamCounts.txt" -type f -delete
 find . -name "*KOfamEvalue_filtered.txt" -type f -delete
 find . -name "*Reformatted.txt" -type f -delete
@@ -95,7 +149,7 @@ find . -name "*KOfamFinalCounts.tsv" -type f -delete
 
 
 
-
+###to create gene catalogs with pfam annotations###
 for gene_file in `ls *PfamFinalCounts.tsv`; do
   cut -f1 ${gene_file} >> all_Pfam.txt
 done
@@ -147,6 +201,7 @@ rm building-col.tmp
 
 done 
 
+###delete all files with the following suffixes###
 find . -name "*PfamCounts.txt" -type f -delete
 find . -name "*PfamEvalue_filtered.txt" -type f -delete
 find . -name "*Reformatted.txt" -type f -delete
@@ -155,7 +210,7 @@ find . -name "*PfamFinalCounts.tsv" -type f -delete
 
 
 
-
+###to create gene catalogs with COG20 Functions###
 for gene_file in `ls *COG20FunctionFinalCounts.tsv`; do
   cut -f1 ${gene_file} >> all_COG20Function.txt
 done
@@ -207,11 +262,10 @@ rm building-col.tmp
 
 done 
 
+###delete all files with the following suffixes###
 find . -name "*COG20FunctionCounts.txt" -type f -delete
 find . -name "*COG20FunctionEvalue_filtered.txt" -type f -delete
 find . -name "*Reformatted.txt" -type f -delete
 find . -name "*ReformattedTwo.txt" -type f -delete
 find . -name "*COG20FunctionFinalCounts.tsv" -type f -delete
-
-
 
