@@ -1,0 +1,217 @@
+for f in *.fa; do anvi-gen-contigs-database -T 4 -f $f -n ${f} -o ${f}_out.db; done
+for f in *.db; do anvi-run-ncbi-cogs -c $f -T 4 --sensitive; done
+for f in *.db; do anvi-run-kegg-kofams -c $f -T 4; done
+for f in *.db; do anvi-run-pfams -c $f -T 4; done
+for f in *.db; do anvi-export-functions -c $f -o ${f}_COG20Category.txt --annotation-sources COG20_CATEGORY; done
+for f in *.db; do anvi-export-functions -c $f -o ${f}_COG20Function.txt --annotation-sources COG20_FUNCTION; done
+for f in *.db; do anvi-export-functions -c $f -o ${f}_KOfam.txt --annotation-sources KOfam; done
+for f in *.db; do anvi-export-functions -c $f -o ${f}_Pfam.txt --annotation-sources Pfam; done
+for f in *.db; do anvi-export-gene-calls -c $f --gene-caller prodigal -o ${f}_AllGeneCalls.txt; done
+
+for f in *.db; do anvi-run-hmms -c $f -T 4; done
+for f in *.db; do anvi-run-scg-taxonomy -c $f -T 4; done
+
+for f in *COG20Function.txt; do awk -F "\t" '{ if(($5 != 0) && ($5 <= .0001)) { print } }' $f >${f}_COG20FunctionEvalue_filtered.txt;done
+for f in *KOfam.txt; do awk -F "\t" '{ if(($5 != 0) && ($5 <= .0001)) { print } }' $f >${f}_KOfamEvalue_filtered.txt;done
+for f in *Pfam.txt; do awk -F "\t" '{ if(($5 != 0) && ($5 <= .0001)) { print } }' $f >${f}_PfamEvalue_filtered.txt;done
+
+
+for f in *KOfamEvalue_filtered.txt; do cut -f4 $f| sort | uniq -c > ${f}KOfamCounts.txt; done
+for f in *PfamEvalue_filtered.txt; do cut -f4 $f| sort | uniq -c > ${f}PfamCounts.txt; done
+for f in *COG20FunctionEvalue_filtered.txt; do cut -f4 $f| sort | uniq -c > ${f}COG20FunctionCounts.txt; done
+
+for f in *KOfamCounts.txt; do sed 's/^ *//g' $f > ${f}KOfamCountsReformatted.txt;done
+for f in *KOfamCountsReformatted.txt; do sed 's/ /;/' $f > ${f}KOfamCountsReformattedTwo.txt; done
+for f in *KOfamCountsReformattedTwo.txt; do awk -F ";" '{n=split($1,a,";");for (i=1;i<=n;i++) print $2"\t"a[i]}' $f > ${f}KOfamFinalCounts.tsv; done
+
+
+for f in *PfamCounts.txt; do sed 's/^ *//g' $f > ${f}PfamCountsReformatted.txt;done
+for f in *PfamCountsReformatted.txt; do sed 's/ /;/' $f > ${f}PfamCountsReformattedTwo.txt; done
+for f in *PfamCountsReformattedTwo.txt; do awk -F ";" '{n=split($1,a,";");for (i=1;i<=n;i++) print $2"\t"a[i]}' $f > ${f}PfamFinalCounts.tsv; done
+
+for f in *COG20FunctionCounts.txt; do sed 's/^ *//g' $f > ${f}COG20FunctionCountsReformatted.txt;done
+for f in *COG20FunctionCountsReformatted.txt; do sed 's/ /;/' $f > ${f}COG20FunctionCountsReformattedTwo.txt; done
+for f in *COG20FunctionCountsReformattedTwo.txt; do awk -F ";" '{n=split($1,a,";");for (i=1;i<=n;i++) print $2"\t"a[i]}' $f > ${f}COG20FunctionFinalCounts.tsv; done
+
+
+
+for gene_file in `ls *KOfamFinalCounts.tsv`; do
+  cut -f1 ${gene_file} >> all_genes.txt
+done
+
+sort -u all_genes.txt > uniq_KOfam.txt
+
+
+set -e
+
+uniq_genes_file="uniq_KOfam.txt"
+
+output_file="combined-outputKOfams.tsv"
+
+
+cat <( printf "function\n" ) ${uniq_genes_file} > ${output_file}
+
+
+IFS=$'\n'
+
+
+for curr_file in $(ls *KOfamFinalCounts.tsv); do
+
+
+curr_sample_name=$(echo ${curr_file} | sed 's/.tsv//')
+
+
+printf "${curr_sample_name}\n" > building-col.tmp
+
+
+for curr_gene in $(cat ${uniq_genes_file}); do
+
+
+if grep -m 1 -F -q "${curr_gene}" ${curr_file}; then
+
+grep -m 1 -F "${curr_gene}" ${curr_file} | cut -f 2 >> building-col.tmp
+
+else
+ 
+  printf "0\n" >> building-col.tmp
+
+fi
+
+done
+
+
+paste ${output_file} building-col.tmp > building-output.tmp
+mv building-output.tmp ${output_file}
+rm building-col.tmp
+
+done 
+
+find . -name "*KOfamCounts.txt" -type f -delete
+find . -name "*KOfamEvalue_filtered.txt" -type f -delete
+find . -name "*Reformatted.txt" -type f -delete
+find . -name "*ReformattedTwo.txt" -type f -delete
+find . -name "*KOfamFinalCounts.tsv" -type f -delete
+
+
+
+
+
+for gene_file in `ls *PfamFinalCounts.tsv`; do
+  cut -f1 ${gene_file} >> all_Pfam.txt
+done
+
+sort -u all_Pfam.txt > uniq_Pfams.txt
+
+
+set -e
+
+uniq_genes_file="uniq_Pfams.txt"
+
+output_file="combined-outputPfams.tsv"
+
+
+cat <( printf "function\n" ) ${uniq_genes_file} > ${output_file}
+
+
+IFS=$'\n'
+
+
+for curr_file in $(ls *PfamFinalCounts.tsv); do
+
+
+curr_sample_name=$(echo ${curr_file} | sed 's/.tsv//')
+
+
+printf "${curr_sample_name}\n" > building-col.tmp
+
+
+for curr_gene in $(cat ${uniq_genes_file}); do
+
+
+if grep -m 1 -F -q "${curr_gene}" ${curr_file}; then
+
+grep -m 1 -F "${curr_gene}" ${curr_file} | cut -f 2 >> building-col.tmp
+
+else
+ 
+  printf "0\n" >> building-col.tmp
+
+fi
+
+done
+
+
+paste ${output_file} building-col.tmp > building-output.tmp
+mv building-output.tmp ${output_file}
+rm building-col.tmp
+
+done 
+
+find . -name "*PfamCounts.txt" -type f -delete
+find . -name "*PfamEvalue_filtered.txt" -type f -delete
+find . -name "*Reformatted.txt" -type f -delete
+find . -name "*ReformattedTwo.txt" -type f -delete
+find . -name "*PfamFinalCounts.tsv" -type f -delete
+
+
+
+
+for gene_file in `ls *COG20FunctionFinalCounts.tsv`; do
+  cut -f1 ${gene_file} >> all_COG20Function.txt
+done
+
+sort -u all_COG20Function.txt > uniq_COG20Function.txt
+
+
+set -e
+
+uniq_genes_file="uniq_COG20Function.txt"
+
+output_file="combined-outputCOG20Function.tsv"
+
+
+cat <( printf "function\n" ) ${uniq_genes_file} > ${output_file}
+
+
+IFS=$'\n'
+
+
+for curr_file in $(ls *COG20FunctionFinalCounts.tsv); do
+
+
+curr_sample_name=$(echo ${curr_file} | sed 's/.tsv//')
+
+
+printf "${curr_sample_name}\n" > building-col.tmp
+
+
+for curr_gene in $(cat ${uniq_genes_file}); do
+
+
+if grep -m 1 -F -q "${curr_gene}" ${curr_file}; then
+
+grep -m 1 -F "${curr_gene}" ${curr_file} | cut -f 2 >> building-col.tmp
+
+else
+ 
+  printf "0\n" >> building-col.tmp
+
+fi
+
+done
+
+
+paste ${output_file} building-col.tmp > building-output.tmp
+mv building-output.tmp ${output_file}
+rm building-col.tmp
+
+done 
+
+find . -name "*COG20FunctionCounts.txt" -type f -delete
+find . -name "*COG20FunctionEvalue_filtered.txt" -type f -delete
+find . -name "*Reformatted.txt" -type f -delete
+find . -name "*ReformattedTwo.txt" -type f -delete
+find . -name "*COG20FunctionFinalCounts.tsv" -type f -delete
+
+
+
